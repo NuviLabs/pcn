@@ -24,12 +24,12 @@ SOFTWARE.
 
 import Imath
 import OpenEXR
+import cv2
 import argparse
 import array
 import numpy as np
 import os
-from open3d import *
-
+import open3d as o3d
 
 def read_exr(exr_path, height, width):
     file = OpenEXR.InputFile(exr_path)
@@ -76,11 +76,12 @@ if __name__ == '__main__':
             pose_path = os.path.join(args.output_dir, 'pose', model_id, '%d.txt' % i)
 
             depth = read_exr(exr_path, height, width)
-            depth_img = Image(np.uint16(depth * 1000))
-            write_image(os.path.join(depth_dir, '%d.png' % i), depth_img)
+            depth_image = np.uint16(depth * 1000)
+
+            cv2.imwrite(os.path.join(depth_dir, '%d.png' % i), depth_image)
 
             pose = np.loadtxt(pose_path)
             points = depth2pcd(depth, intrinsics, pose)
-            pcd = PointCloud()
-            pcd.points = Vector3dVector(points)
-            write_point_cloud(os.path.join(pcd_dir, '%d.pcd' % i), pcd)
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(points)
+            o3d.io.write_point_cloud(os.path.join(pcd_dir, '%d.pcd' % i), pcd)

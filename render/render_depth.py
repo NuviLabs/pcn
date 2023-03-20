@@ -73,7 +73,7 @@ def setup_blender(width, height, focal_length):
     tree.links.new(rl.outputs['Depth'], output.inputs[0])
 
     # remove default cube
-    bpy.data.objects['Cube'].select = True
+    bpy.data.objects['Cube'].select_set(True)
     bpy.ops.object.delete()
 
     return scene, camera, output
@@ -111,19 +111,38 @@ if __name__ == '__main__':
         os.open('blender.log', os.O_WRONLY)
 
         # Import mesh model
-        model_path = os.path.join(model_dir, model_id, 'model.obj')
-        bpy.ops.import_scene.obj(filepath=model_path)
+        model_path = os.path.join(model_dir, model_id, "models", 'model.obj')
+        if os.path.exists(model_path):
+            bpy.ops.import_scene.obj(filepath=model_path)
+        else:
+            model_path = os.path.join(model_dir, model_id, "models", 'model_normalized.obj')
+            bpy.ops.import_scene.obj(filepath=model_path)
 
         # Rotate model by 90 degrees around x-axis (z-up => y-up) to match ShapeNet's coordinates
-        bpy.ops.transform.rotate(value=-np.pi / 2, axis=(1, 0, 0))
+        bpy.ops.transform.rotate(value=-np.pi / 2, orient_axis="X")
 
         # Render
         for i in range(num_scans):
             scene.frame_set(i)
             pose = random_pose()
             camera.matrix_world = mathutils.Matrix(pose)
-            output.file_slots[0].path = os.path.join(exr_dir, '#.exr')
+
+            # Set the file path and name for the output file
+            filepath = os.path.join(exr_dir, f"{i}.exr")
+
+            # Set the output format to OpenEXR
+            bpy.context.scene.render.image_settings.file_format = 'OPEN_EXR'
+
+            # Set the color depth to Float (Full)
+            bpy.context.scene.render.image_settings.color_depth = '32'
+
+            # Set the output path for the rendered image
+            bpy.context.scene.render.filepath = filepath
+
+            # Render the scene and save the output file
             bpy.ops.render.render(write_still=True)
+
+            # Save the scene 
             np.savetxt(os.path.join(pose_dir, '%d.txt' % i), pose, '%f')
 
         # Clean up
